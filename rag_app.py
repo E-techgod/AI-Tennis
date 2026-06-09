@@ -4,7 +4,7 @@ import os
 
 import streamlit as st
 
-from rag_agent import RagAgent, RetrievalHit
+from rag_agent import GeminiAPIError, RagAgent, RetrievalHit
 
 
 st.set_page_config(
@@ -420,6 +420,36 @@ def render_chat(agent: RagAgent) -> None:
             st.markdown(message["content"])
 
 
+def render_api_issue(exc: GeminiAPIError) -> None:
+    title = "Gemini limit reached"
+    if exc.kind == "temporary_overload":
+        title = "Gemini is busy right now"
+    elif exc.kind == "invalid_key":
+        title = "Gemini API key issue"
+    elif exc.kind == "permission":
+        title = "Gemini access issue"
+    elif exc.kind == "network":
+        title = "Network issue"
+
+    st.markdown(
+        f"""
+        <div style="
+            background:#FFF8E8;
+            border:1px solid #E6C76A;
+            border-left:4px solid #C8A63A;
+            border-radius:10px;
+            padding:14px 16px;
+            color:#5A4A1A;
+            line-height:1.5;
+        ">
+            <div style="font-weight:700; margin-bottom:4px;">{title}</div>
+            <div>{exc}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def main() -> None:
     agent = get_agent()
     api_key = render_sidebar(agent)
@@ -446,11 +476,14 @@ def main() -> None:
         with st.spinner("Finding relevant context and generating answer…"):
             try:
                 answer, hits = agent.answer_question(prompt, api_key=api_key)
+            except GeminiAPIError as exc:
+                render_api_issue(exc)
             except Exception as exc:
                 st.error(str(exc))
                 return
-            st.markdown(answer)
-            render_sources(hits)
+            else:
+                st.markdown(answer)
+                render_sources(hits)
 
 
 if __name__ == "__main__":

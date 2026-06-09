@@ -149,6 +149,12 @@ class RetrievalHit:
     page: int | None = None
 
 
+class GeminiAPIError(RuntimeError):
+    def __init__(self, message: str, *, kind: str = "generic") -> None:
+        super().__init__(message)
+        self.kind = kind
+
+
 def chunk_text(text: str, size: int = 400, overlap: int = 80) -> list[str]:
     words = [word for word in re.split(r"\s+", text.strip()) if word]
     if not words:
@@ -492,16 +498,43 @@ class RagAgent:
                     time.sleep(delay)
                     continue
                 if exc.code == 503:
-                    raise RuntimeError(
+                    raise GeminiAPIError(
                         "Gemini is temporarily overloaded after multiple retries. "
-                        "Wait a moment and try again."
+                        "Wait a moment and try again.",
+                        kind="temporary_overload",
                     ) from exc
-                raise RuntimeError(f"Gemini request failed: {error_body}") from exc
+                raise self._build_api_error(exc.code, error_body) from exc
             except urllib.error.URLError as exc:
                 last_error = exc
                 if attempt < len(delays):
                     time.sleep(delay)
                     continue
-                raise RuntimeError(f"Unable to reach Gemini API: {exc.reason}") from exc
+                raise GeminiAPIError(
+                    f"Unable to reach Gemini API: {exc.reason}",
+                    kind="network",
+                ) from exc
 
-        raise RuntimeError("Gemini request failed after multiple retries.") from last_error
+        raise GeminiAPIError(
+            "Gemini request failed after multiple retries.",
+            kind="generic",
+        ) from last_error
+
+    def _build_api_error(self, status_code: int, error_body: str) -> GeminiAPIError:
+        normalized = error_body.lower()
+        if status_code == 429 or "quota" in normalized or "rate limit" in normalized:
+            return GeminiAPIError(
+                "Your Gemini API key has reached its current usage limit. "
+                "Wait for the quota to reset, switch to a different key, or try again later.",
+                kind="quota_limit",
+            )
+        if "api key not valid" in normalized or "invalid api key" in normalized:
+            return GeminiAPIError(
+                "The Gemini API key appears to be invalid. Update it in the sidebar and try again.",
+                kind="invalid_key",
+            )
+        if status_code == 403:
+            return GeminiAPIError(
+                "Gemini rejected this request. Check that your API key has access to the selected model and try again.",
+                kind="permission",
+            )
+        return GeminiAPIError(f"Gemini request failed: {error_body}", kind="generic")
