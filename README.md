@@ -9,7 +9,7 @@ This project is released under the MIT License. See [LICENSE](LICENSE).
 ## Project Structure
 
 - `rag_agent.py`: document parsing, chunking, TF-IDF retrieval, chat history, and Gemini API calls
-- `streamlit_app.py`: UI for tennis uploads, beginner Q&A, and source display
+- `rag_app.py`: UI for tennis uploads, beginner Q&A, and source display
 - `test_rag_agent.py`: lightweight unit tests for chunking and retrieval behavior
 - `Makefile`: convenience commands for setup, running, and checks
 
@@ -76,7 +76,7 @@ export GEMINI_API_KEY="your-key"
 4. Start the app:
 
 ```bash
-streamlit run streamlit_app.py
+streamlit run rag_app.py
 ```
 
 ## Notes
