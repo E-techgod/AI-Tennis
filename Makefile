@@ -13,10 +13,10 @@ install: venv
 	$(VENV_PIP) install -r requirements.txt
 
 run:
-	$(STREAMLIT) run streamlit_app.py
+	$(STREAMLIT) run rag_app.py
 
 test:
 	$(VENV_PYTHON) -m unittest test_rag_agent.py
 
 check:
-	$(VENV_PYTHON) -m py_compile rag_agent.py streamlit_app.py test_rag_agent.py
+	$(VENV_PYTHON) -m py_compile rag_agent.py rag_app.py test_rag_agent.py
